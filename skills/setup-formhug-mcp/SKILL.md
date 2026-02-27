@@ -131,6 +131,26 @@ When the agent connects to the FormHug MCP server for the first time, it will:
 
 If the browser doesn't open automatically, look for a URL in the agent's output and open it manually.
 
+#### Agent-assisted OAuth flow
+
+Some agents (e.g., custom AI agents, headless environments, or agents without browser access) cannot open a browser automatically. In this case, the agent should handle the OAuth flow interactively:
+
+1. The agent constructs the OAuth authorization URL (with PKCE challenge)
+2. **Present the authorization URL to the user** and ask them to open it in their browser
+3. The user logs in, grants access, and is redirected to the callback URL
+4. **Ask the user to copy the full callback URL** (from the browser's address bar) and send it back to the agent
+5. The agent extracts the authorization code from the callback URL and exchanges it for an access token
+
+**Example agent prompt to the user:**
+
+> Please open this link in your browser to authorize FormHug:
+>
+> `https://formhug.ai/oauth/authorize?client_id=...&redirect_uri=...&code_challenge=...`
+>
+> After you log in and approve access, your browser will redirect to a URL. Please copy the **full URL** from your browser's address bar and paste it here.
+
+The agent then parses the callback URL to extract the `code` parameter and completes the token exchange.
+
 ### Step 4: Verify the connection
 
 Confirm the server is connected and tools are available. Try a simple operation like listing forms to verify end-to-end connectivity.
