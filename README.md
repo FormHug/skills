@@ -1,14 +1,21 @@
 # FormHug Skills
 
-Reusable agent skills for FormHug — works with any MCP-compatible agent or IDE (Claude Code, Cursor, Windsurf, Claude Desktop, and others).
+Reusable agent skills for FormHug — works with any MCP-compatible agent or IDE (Claude Code, Cursor, Windsurf, Claude Desktop, OpenClaw, and others).
 
 ## Available Skills
 
-| Skill | Description |
-|-------|-------------|
-| [setup-formhug-mcp](skills/setup-formhug-mcp) | Connect any MCP-compatible agent to FormHug's OAuth-protected remote MCP server |
+| Skill | Audience | Description |
+|-------|----------|-------------|
+| [setup-formhug-mcp](skills/setup-formhug-mcp) | Humans | Step-by-step guide for connecting any MCP-compatible agent to FormHug |
+| [formhug-mcp-openclaw](skills/formhug-mcp-openclaw) | Agents | Agent-driven setup — the agent adds the MCP server and initiates OAuth itself |
 
 ## Installation
+
+### ClawHub (OpenClaw)
+
+```bash
+clawhub install formhug-mcp-openclaw
+```
 
 ### Claude Code
 
