@@ -198,6 +198,7 @@ The available tools may change as FormHug evolves. Connect the server and check 
 | `add_fields` | Add fields to an existing form |
 | `remove_field` | Remove a field from a form |
 | `preview_form` | Get a readable markdown preview |
+| `get_published_form` | Get the structure of any published form |
 | `list_entries` | List form submissions |
 | `get_entry` | Get a single submission |
 | `submit_entry` | Submit a new entry to a form |
