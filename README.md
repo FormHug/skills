@@ -1,55 +1,67 @@
 # FormHug Skills
 
-Reusable agent skills for FormHug — works with any MCP-compatible agent or IDE (Claude Code, Cursor, Windsurf, Claude Desktop, OpenClaw, and others).
+Agent Skills for working with FormHug — connecting to its MCP server, building good forms, applying recommended patterns. Built to the [Agent Skills open standard](https://github.com/anthropics/skills), so they work with any agent that reads `SKILL.md`: Claude Code, Codex CLI, Cursor, Windsurf, Claude Desktop, OpenClaw, Hermes, and others.
 
-## Available Skills
+The MCP server itself (`https://formhug.ai/mcp`) ships its own reference resources (`formhug://guide`, `formhug://field-types`, …) covering tool usage. This repository complements them with skills that the agent **proactively** activates from triggers — installation flows, workflow guides, opinionated best practices — material that's better delivered as procedural skills than as on-demand reference docs.
 
-| Skill | Audience | Description |
-|-------|----------|-------------|
-| [setup-formhug-mcp](skills/setup-formhug-mcp) | Humans | Step-by-step guide for connecting any MCP-compatible agent to FormHug |
-| [formhug-mcp-openclaw](skills/formhug-mcp-openclaw) | Agents | Agent-driven setup — the agent adds the MCP server and initiates OAuth itself |
+## Available skills
 
-## Installation
+| Skill | What it does |
+|-------|--------------|
+| [`setup-formhug-mcp`](skills/setup-formhug-mcp) | Configure the current agent to talk to `https://formhug.ai/mcp`. Picks OAuth (local agents) or Personal Access Token (remote/chat agents) automatically, writes the right config for that agent, and verifies with `get_me`. |
 
-### ClawHub (OpenClaw)
+## Install
 
-```bash
-clawhub install formhug-mcp-openclaw
-```
-
-### Claude Code
-
-Copy or symlink a skill directory into your Claude Code skills location:
+The recommended way is the [`skills`](https://www.npmjs.com/package/skills) CLI from Vercel Labs — it detects which agents you have installed and copies the skills to the right place for each:
 
 ```bash
-# User-level (available across all projects)
-cp -r skills/setup-formhug-mcp ~/.claude/skills/
-
-# Or project-level (available in a specific project)
-cp -r skills/setup-formhug-mcp /path/to/project/.claude/skills/
+npx skills add formhug/skills
 ```
 
-### Other Agents
+Install only specific skills, or only to specific agents:
 
-Each skill's `SKILL.md` contains the full instructions. You can read it directly or adapt it to your agent's skill/prompt system.
+```bash
+npx skills add formhug/skills --skill setup-formhug-mcp
+npx skills add formhug/skills -a claude-code -a cursor
+```
+
+### Manual install
+
+If you'd rather not use the CLI, copy a skill directory into your agent's skills location. Path varies by agent:
+
+| Agent          | Skills directory                                         |
+| -------------- | -------------------------------------------------------- |
+| Claude Code    | `~/.claude/skills/` (user) or `.claude/skills/` (project) |
+| Codex CLI      | `~/.codex/skills/`                                       |
+| Cursor         | `~/.cursor/skills/`                                      |
+| Gemini CLI     | `~/.gemini/skills/`                                      |
+| OpenClaw       | via `clawhub install <skill>`                            |
+
+```bash
+git clone https://github.com/formhug/skills.git
+cp -r skills/skills/setup-formhug-mcp ~/.claude/skills/
+```
 
 ## Usage
 
-Once installed, invoke a skill by its trigger phrases or slash command. For example in Claude Code:
+After installation, skills activate automatically when the agent recognises a matching request (each skill declares its triggers in its frontmatter). Agents that expose skills as slash commands can also invoke them directly, e.g. `/setup-formhug-mcp`.
 
-```
-/setup-formhug-mcp
-```
-
-Or simply ask your agent to "set up FormHug MCP" and the skill will activate automatically.
-
-## Adding New Skills
-
-Create a new directory under `skills/` with a `SKILL.md` file:
+## Repository layout
 
 ```
 skills/
-  your-skill-name/
-    SKILL.md          # Required — frontmatter + instructions
-    ...               # Optional supporting files
+  <skill-name>/
+    SKILL.md          # frontmatter (name, description) + instructions
+    references/       # optional — files the skill pulls in on demand
+    scripts/          # optional — executable helpers
 ```
+
+Each skill is a self-contained directory. The agent only loads `SKILL.md` up front; everything else is referenced from inside it and read on demand (progressive disclosure).
+
+## What kinds of skills belong here
+
+- **Setup / integration** — connecting agents to FormHug (`setup-formhug-mcp`)
+- **Workflow guides** — opinionated, agent-driven flows (e.g. "design a registration form from a description", "audit an existing form's entries")
+- **Best practices** — codified conventions agents should follow when using FormHug tools (field naming, scoring rubrics, theme choices, webhook patterns)
+
+Reference material that the agent needs only *after* it's already decided what to do (field type catalogues, theme tokens, error code tables) generally belongs in the MCP server's resources rather than here.

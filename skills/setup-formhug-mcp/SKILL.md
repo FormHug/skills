@@ -1,63 +1,70 @@
 ---
 name: setup-formhug-mcp
 description: |
-  Set up and connect to FormHug's remote MCP server with OAuth authentication.
-  Use when the user wants to connect to FormHug MCP, set up FormHug integration,
-  add FormHug as an MCP server, or troubleshoot FormHug MCP connection issues.
-  Triggers on "setup formhug", "connect formhug", "add formhug mcp",
-  "formhug mcp setup", "configure formhug".
+  Install and connect to FormHug's remote MCP server (https://formhug.ai/mcp).
+  Use when the user asks to set up / connect / add / configure FormHug,
+  or when FormHug MCP tools are needed but not yet available in this session.
+  Picks the right auth method (OAuth or Personal Access Token) based on the
+  current agent's environment, then writes the correct MCP config for that
+  agent and verifies the connection with `get_me`.
 ---
 
-# Set Up FormHug MCP Server
+# Set up FormHug MCP
 
-You are a setup assistant that helps users connect their AI agent or IDE to FormHug's remote MCP server at `https://formhug.ai/mcp`. FormHug's MCP server uses OAuth 2.1 authorization (per the [MCP Authorization spec](https://modelcontextprotocol.io/docs/tutorials/security/authorization)).
+You are configuring the **current agent** (the one reading this skill) to talk to FormHug's remote MCP server. Drive the whole process yourself; only involve the user for the small parts they must do (logging in, creating a token).
 
-## Prerequisites
+## Server facts
 
-- An MCP-compatible agent or IDE (Claude Code, Cursor, Windsurf, Claude Desktop, etc.)
-- A FormHug account (sign up at https://formhug.ai if needed)
-- A web browser for the OAuth login flow
+| Property      | Value                              |
+| ------------- | ---------------------------------- |
+| **URL**       | `https://formhug.ai/mcp`           |
+| **Transport** | Streamable HTTP (only)             |
+| **Auth**      | OAuth 2.1 **or** Personal Access Token (`Authorization: Bearer fh_...`) |
 
-## MCP Server Details
+## Step 0 — Skip if already connected
 
-| Property | Value |
-|----------|-------|
-| **URL** | `https://formhug.ai/mcp` |
-| **Transport** | Streamable HTTP |
-| **Auth** | OAuth 2.1 (authorization code + PKCE) |
+If FormHug MCP tools (`get_me`, `list_forms`, …) are already available in your toolset, call `get_me` once. If it returns a user, tell the user "FormHug is already connected as `<email>`" and **stop**. Don't reinstall.
 
-## Workflow
+## Step 1 — Pick the auth method by agent identity
 
-### Step 1: Detect the user's agent
+The choice is fixed by **what agent you are**, not by user preference:
 
-Ask the user which agent or IDE they are using if not obvious from context. The setup steps differ per tool.
+| Agent you are                                                                | Auth method     | Why                                                                 |
+| ---------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------- |
+| Claude Code, Codex CLI, Cursor, Windsurf, Claude Desktop, VS Code (Copilot), Cline, Zed, any local IDE/CLI agent | **OAuth 2.1**   | Runs on the user's machine — the agent's MCP client opens a browser and handles OAuth end-to-end. |
+| OpenClaw, Hermes, any remote / chat-only agent that cannot launch a browser on the user's machine | **PAT**         | No browser bridge. OAuth would force the user to paste the redirect URL back, which is unacceptable per project policy. |
+| Genuinely unsure                                                              | Ask the user    | "Can you open a browser on the machine I'm running on, or am I connected to you only through chat?" Browser → OAuth. Chat-only → PAT. |
 
-### Step 2: Add the FormHug MCP server
+**Do not** try to drive OAuth manually (fetching metadata, building authorization URLs, asking the user to paste the redirect URL). If OAuth isn't viable for your environment, use PAT.
 
-Follow the instructions for the user's agent:
+---
 
-#### Claude Code (CLI)
+## OAuth path (local agents)
+
+Add the server with the agent-specific command/config below. The agent's MCP client takes care of OAuth discovery, PKCE, browser launch, and token storage. After adding, the user will be prompted by the agent (not by you) to log in.
+
+### Claude Code
 
 ```bash
-claude mcp add --transport http formhug https://formhug.ai/mcp
+claude mcp add --transport http formhug https://formhug.ai/mcp --scope user
 ```
 
-**Scope options:**
+`--scope user` makes it available across all projects. Use `--scope project` to share via `.mcp.json`, or omit for project-local. After adding, Claude Code will prompt the user to authorize in the browser the first time a FormHug tool is called.
 
-| Scope | Flag | Effect |
-|-------|------|--------|
-| **User** (Recommended) | `--scope user` | Available across all your projects |
-| **Project** | `--scope project` | Shared via `.mcp.json` in the project root |
-| **Local** (default) | (no flag) | This project only, private to you |
+### Codex CLI
 
-#### Claude Desktop
+Add to `~/.codex/config.toml`:
 
-Edit the Claude Desktop config file:
+```toml
+[mcp_servers.formhug]
+url = "https://formhug.ai/mcp"
+```
 
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+Codex CLI handles OAuth automatically when no `bearer_token_env_var` is set.
 
-Add the following under `"mcpServers"`:
+### Cursor
+
+Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` in the project for project scope):
 
 ```json
 {
@@ -70,30 +77,7 @@ Add the following under `"mcpServers"`:
 }
 ```
 
-Then restart Claude Desktop.
-
-#### Cursor
-
-Open Cursor Settings > MCP, click "+ Add new MCP server", and enter:
-
-- **Name:** `formhug`
-- **Type:** `url` (Streamable HTTP)
-- **URL:** `https://formhug.ai/mcp`
-
-Or add directly to `.cursor/mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "formhug": {
-      "type": "url",
-      "url": "https://formhug.ai/mcp"
-    }
-  }
-}
-```
-
-#### Windsurf
+### Windsurf
 
 Add to `~/.codeium/windsurf/mcp_config.json`:
 
@@ -101,6 +85,22 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "formhug": {
+      "serverUrl": "https://formhug.ai/mcp"
+    }
+  }
+}
+```
+
+Then click **Refresh** in the Cascade panel.
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "formhug": {
       "type": "url",
       "url": "https://formhug.ai/mcp"
     }
@@ -108,97 +108,85 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
-Then restart Windsurf.
+Then **fully quit and relaunch** Claude Desktop.
 
-#### Other MCP-compatible agents
+### Other local MCP clients
 
-For any agent that supports remote MCP servers via Streamable HTTP, add a server with:
+Use the client's standard "remote MCP server (Streamable HTTP)" entry with URL `https://formhug.ai/mcp` and no auth header — the client will discover OAuth from the 401 response per the MCP authorization spec.
 
-- **URL:** `https://formhug.ai/mcp`
-- **Transport:** Streamable HTTP (sometimes labeled "HTTP" or "url")
+---
 
-The agent should handle OAuth 2.1 discovery and authorization automatically per the MCP spec.
+## PAT path (remote / chat-only agents)
 
-### Step 3: Authenticate
+For agents that cannot drive a browser-based OAuth flow.
 
-When the agent connects to the FormHug MCP server for the first time, it will:
+**Critical rule: never ask the user to send the token back through chat.** The token is a long-lived credential equivalent to a password; if it traverses the chat channel it ends up in model provider logs, conversation history, possibly training data, and any future screenshot/share of this conversation. The flow below is designed so the token goes **directly from FormHug to the user's MCP config**, bypassing you entirely.
 
-1. Receive a `401 Unauthorized` response with OAuth metadata
-2. Discover FormHug's authorization server endpoints
-3. Open a browser window for login
-4. The user logs in with their FormHug account and grants access
-5. The agent receives and stores an access token
+You give the user (a) instructions to mint the token, and (b) a config snippet with a placeholder. The user fills the token in themselves and tells you when done. Then you verify.
 
-If the browser doesn't open automatically, look for a URL in the agent's output and open it manually.
+### Step P1 — Send the user the full instructions in one message
 
-#### Agent-assisted OAuth flow
+Compose **one message** to the user containing both the token-creation steps and the config snippet they need to paste, with a `<PASTE YOUR TOKEN HERE>` placeholder where the token goes. The user should never need to send the token to you.
 
-Some agents (e.g., custom AI agents, headless environments, or agents without browser access) cannot open a browser automatically. In this case, the agent should handle the OAuth flow interactively:
+Template (adapt the config snippet to the user's agent — see below):
 
-1. The agent constructs the OAuth authorization URL (with PKCE challenge)
-2. **Present the authorization URL to the user** and ask them to open it in their browser
-3. The user logs in, grants access, and is redirected to the callback URL
-4. **Ask the user to copy the full callback URL** (from the browser's address bar) and send it back to the agent
-5. The agent extracts the authorization code from the callback URL and exchanges it for an access token
-
-**Example agent prompt to the user:**
-
-> Please open this link in your browser to authorize FormHug:
+> To connect FormHug, please do these steps on your end:
 >
-> `https://formhug.ai/oauth/authorize?client_id=...&redirect_uri=...&code_challenge=...`
+> **1. Create a Personal Access Token**
 >
-> After you log in and approve access, your browser will redirect to a URL. Please copy the **full URL** from your browser's address bar and paste it here.
+> 1. Open <https://formhug.ai/profile/personal_access_token>
+> 2. Click **Create Token**, give it a name (e.g. the name of this agent), pick the scopes you want me to have, click **OK**
+> 3. Copy the token — it starts with `fh_` and is shown **only once**. Save it in a password manager.
+>
+> **2. Add this to your MCP config**, replacing the placeholder with the token you just copied:
+>
+> ```json
+> { /* the snippet for your specific agent, see below */ }
+> ```
+>
+> Config file location: `<path for the user's agent>`
+>
+> **3.** Let me know once you've saved the file, and I'll verify the connection.
 
-The agent then parses the callback URL to extract the `code` parameter and completes the token exchange.
+Then wait for the user. If they accidentally send the token anyway, tell them to **revoke it immediately** at the same page and create a fresh one — once it has appeared in chat it must be considered leaked.
 
-### Step 4: Verify the connection
+### Step P2 — Per-agent config snippets
 
-Confirm the server is connected and tools are available. Try a simple operation like listing forms to verify end-to-end connectivity.
+#### OpenClaw
 
-## Removing the Server
+Config file: `~/.openclaw/openclaw.json` (the OpenClaw Gateway hot-reloads it; no restart needed).
 
-#### Claude Code
-```bash
-claude mcp remove formhug
+```json
+{
+  "mcpServers": {
+    "formhug": {
+      "type": "url",
+      "url": "https://formhug.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer <PASTE YOUR TOKEN HERE>"
+      }
+    }
+  }
+}
 ```
 
-#### Other agents
-Remove the `"formhug"` entry from the relevant config file and restart the agent.
+#### Generic remote / chat agent
 
-## Troubleshooting
+If you're some other remote agent, give the user a snippet in your platform's documented MCP config format with:
 
-### Server not connected or tools not appearing
-1. Verify the URL is exactly `https://formhug.ai/mcp`
-2. Check the config file for JSON syntax errors
-3. Remove and re-add the server entry
-4. Restart the agent
+- `url`: `https://formhug.ai/mcp`
+- transport: Streamable HTTP
+- header: `Authorization: Bearer <PASTE YOUR TOKEN HERE>`
 
-### OAuth / Authentication errors
-1. Remove and re-add the server to clear cached auth
-2. Ensure the FormHug account is active and not locked
-3. Check that the browser isn't blocking popups from the OAuth flow
-4. If behind a corporate proxy, ensure `formhug.ai` is accessible
+If the platform supports secrets / environment variables, prefer referencing the token by env var name rather than inline (e.g., `${env:FORMHUG_PAT}`) and instruct the user to add the secret through the platform's secrets UI instead of editing the JSON directly.
 
-### Token expired errors
-Most agents auto-refresh OAuth tokens. If errors persist:
-1. Remove the server configuration
-2. Re-add it and re-authenticate through the browser flow
+---
 
-## What FormHug MCP Provides
+## Step 2 — Verify
 
-The available tools may change as FormHug evolves. Connect the server and check your agent's tool list for the latest. Below is a reference snapshot:
+Call `get_me`. On success, tell the user "FormHug connected as `<email>`". On failure, surface the error verbatim — FormHug's error responses are self-explanatory (401 = bad/missing token, 403 = scope missing, etc.). Common fixes:
 
-| Tool | Description |
-|------|-------------|
-| `list_forms` | List forms you own |
-| `get_form` | Get form details and field definitions |
-| `create_form` | Create a new form |
-| `update_form` | Update form name/description |
-| `delete_form` | Permanently delete a form |
-| `add_fields` | Add fields to an existing form |
-| `remove_field` | Remove a field from a form |
-| `preview_form` | Get a readable markdown preview |
-| `get_published_form` | Get the structure of any published form |
-| `list_entries` | List form submissions |
-| `get_entry` | Get a single submission |
-| `submit_entry` | Submit a new entry to a form |
+- 401 → token wrong, expired, or revoked → ask the user to mint a new one (PAT) or trigger the agent's MCP "re-authenticate" command (OAuth)
+- Tool not found → the config wasn't loaded; restart/reload as required by the agent (see per-agent notes above)
+- Network error → check `https://formhug.ai/mcp` is reachable from the agent's host
+
