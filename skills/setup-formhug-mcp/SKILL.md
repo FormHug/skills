@@ -51,6 +51,8 @@ claude mcp add --transport http formhug https://formhug.ai/mcp --scope user
 
 `--scope user` makes it available across all projects. Use `--scope project` to share via `.mcp.json`, or omit for project-local. After adding, Claude Code will prompt the user to authorize in the browser the first time a FormHug tool is called.
 
+> ⚠️ Claude Code loads MCP servers at startup. If the FormHug tools don't appear in your current session, tell the user they likely need to **restart Claude Code** for the new server to take effect.
+
 ### Codex CLI
 
 Add to `~/.codex/config.toml`:
@@ -61,6 +63,8 @@ url = "https://formhug.ai/mcp"
 ```
 
 Codex CLI handles OAuth automatically when no `bearer_token_env_var` is set.
+
+> ⚠️ Codex CLI starts MCP servers only at launch. Remind the user to **restart Codex CLI** after editing the config for the server to be picked up.
 
 ### Cursor
 
@@ -76,6 +80,8 @@ Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` in the project for project sc
   }
 }
 ```
+
+> ⚠️ Cursor only reads the MCP config on startup. Remind the user to **restart Cursor** (or hit the refresh button in MCP settings) for the new server to load.
 
 ### Windsurf
 
