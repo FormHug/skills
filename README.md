@@ -9,6 +9,10 @@ The MCP server itself (`https://formhug.ai/mcp`) ships its own reference resourc
 | Skill | What it does |
 |-------|--------------|
 | [`setup-formhug-mcp`](skills/setup-formhug-mcp) | Configure the current agent to talk to `https://formhug.ai/mcp`. Picks OAuth (local agents) or Personal Access Token (remote/chat agents) automatically, writes the right config for that agent, and verifies with `get_me`. |
+| [`migrate-form-to-formhug`](skills/migrate-form-to-formhug) | Recreate an existing form in FormHug from another platform or a document (Word/PDF/Excel/screenshot). Inventory-first workflow with a field-type mapping table and post-create verification. |
+| [`analyze-formhug-entries`](skills/analyze-formhug-entries) | Analyze a form's submissions: full pagination, api_code→label decoding, per-type aggregation (NPS, likert, checkbox), and honest reporting rules. |
+| [`audit-formhug-form`](skills/audit-formhug-form) | Review an existing form against a fixed checklist (field-type fit, required discipline, structure, settings, privacy) and apply approved fixes safely on live forms. |
+| [`formhug-survey-methodology`](skills/formhug-survey-methodology) | Survey design methodology — question wording, scale design, structure, response-quality safeguards — mapped to the FormHug fields that implement each pattern. |
 
 ## Install
 
